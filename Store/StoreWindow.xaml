@@ -1,4 +1,4 @@
-﻿<Window x:Class="Store.StoreWindow"
+﻿<Window x:Name="window" x:Class="Store.StoreWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,7 +6,53 @@
         xmlns:local="clr-namespace:Store"
         mc:Ignorable="d"
         Title="StoreWindow" Height="450" Width="800">
+    <Window.Resources>
+        <local:Model x:Key="StoreModel"/>
+    </Window.Resources>
     <Grid>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="auto"/>
+        </Grid.RowDefinitions>
+        <TabControl>
+            <TabItem Header="Каталог">
+                <DataGrid x:Name="goodsGrid" AutoGenerateColumns="False" SelectionMode="Single" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Название" Binding="{Binding Path=Name}"/>
+                        <DataGridTextColumn Header="Артикул" Binding="{Binding Path=Article}"/>
+                        <DataGridTextColumn Header="Цена" Binding="{Binding Path=Value}"/>
+                        <DataGridTextColumn Header="Производитель" Binding="{Binding Path=Producer}"/>
+                        <DataGridTextColumn Header="Тип" Binding="{Binding Path=GoodType}"/>
+                        <DataGridTemplateColumn Header="Действие">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                        </Grid.RowDefinitions>
+                                        <TextBox x:Name="__id" Text="{Binding Path=ID}" Visibility="Collapsed"/>
+                                        <TextBox x:Name="__count" Text="0" TextChanged="Count_TextChanged"/>
+                                        <Button Grid.Row="1" x:Name="__add" Content="Добавить в корзину" 
+                                                Command="{Binding Path=AddStoreCommand, 
+                                            Source={StaticResource StoreModel}}">
+                                            <Button.CommandParameter>
+                                                <local:Basket UserID="{Binding Path=UserID, 
+                                                    Source={StaticResource StoreModel}}"/>
+                                            </Button.CommandParameter>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Корзина"></TabItem>
+        </TabControl>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock Text="{Binding StringFormat=Сумма заказа составляет {0} рублей, 
+                Source={StaticResource StoreModel}, Path=TotalValue, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
     </Grid>
 </Window>
