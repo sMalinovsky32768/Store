@@ -280,8 +280,8 @@ RETURNS TABLE
 AS
 RETURN 
 (
-	SELECT ID, Name, Articul, Value, dbo.GetGoodTypeString(ID) as [GoodType],
-	dbo.GetProducerString(ID) as [Producer] from Good
+	SELECT ID, Name, Articul, Value, dbo.GetGoodTypeString(GoodTypeID) as [GoodType],
+	dbo.GetProducerString(ProducerID) as [Producer] from Good
 )
 ' 
 END
