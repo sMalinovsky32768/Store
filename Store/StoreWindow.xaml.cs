@@ -1,25 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace Store
 {
     public partial class StoreWindow : Window
     {
         private int UserID { get; }
-        private DataSet Set { get; set; }
         internal Model StoreModel { get; private set; }
 
         public StoreWindow(int id)
@@ -28,16 +20,53 @@ namespace Store
             StoreModel = Resources["StoreModel"] as Model;
             StoreModel.UserID = id;
             StoreModel.UpdateTotalValue();
+            StoreModel.UpdateGoodsTable();
+            StoreModel.UpdateBasketTable();
             UserID = id;
-            Set = new DataSet();
-            Set.Tables.Add("Goods");
-            new SqlDataAdapter("Select * from GetGoods()", ConfigurationManager.
-                ConnectionStrings["DefaultConnection"].ConnectionString).Fill(Set, "Goods");
-            goodsGrid.ItemsSource = Set.Tables["Goods"].DefaultView;
-            goodsGrid.ItemContainerGenerator.StatusChanged += ItemContainerGenerator_StatusChanged;
+            goodsGrid.ItemsSource = StoreModel.Set.Tables["Goods"].DefaultView;
+            basketGrid.ItemsSource = StoreModel.Set.Tables["Basket"].DefaultView;
+            deliveryMethod.ItemsSource = StoreModel.Set.Tables["DeliveryMethod"].DefaultView;
+            goodsGrid.ItemContainerGenerator.StatusChanged += 
+                Goods_ItemContainerGenerator_StatusChanged;
+            basketGrid.ItemContainerGenerator.StatusChanged += 
+                Basket_ItemContainerGenerator_StatusChanged;
         }
 
-        private void ItemContainerGenerator_StatusChanged(object sender, EventArgs e)
+        private void Basket_ItemContainerGenerator_StatusChanged(object sender, EventArgs e)
+        {
+            if (goodsGrid.ItemContainerGenerator.Status ==
+                System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+            {
+                var containers = basketGrid.Items.Cast<object>().Select(
+                    item => (FrameworkElement)basketGrid.ItemContainerGenerator.
+                    ContainerFromItem(item));
+                foreach (var container in containers)
+                    if (container != null)
+                        container.Loaded += Basket_Container_Loaded;
+            }
+        }
+
+        private void Basket_Container_Loaded(object sender, RoutedEventArgs e)
+        {
+            var element = (DataGridRow)sender;
+            element.Loaded -= Goods_Container_Loaded;
+
+            var contentPresenter = (ContentPresenter)basketGrid.Columns[^1].
+                GetCellContent(element);
+            var template = contentPresenter?.ContentTemplate;
+            if (template != null)
+            {
+                var __id = (TextBox)template.FindName("__id", contentPresenter);
+                var btn = (Button)template.FindName("__del", contentPresenter);
+                if (btn?.CommandParameter is DelBasketParam basket)
+                {
+                    basket.ID = Convert.ToInt32(__id.Text);
+                    basket.OwnerModel = StoreModel;
+                }
+            }
+        }
+
+        private void Goods_ItemContainerGenerator_StatusChanged(object sender, EventArgs e)
         {
             if (goodsGrid.ItemContainerGenerator.Status ==
                 System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
@@ -46,14 +75,14 @@ namespace Store
                     item => (FrameworkElement)goodsGrid.ItemContainerGenerator.
                     ContainerFromItem(item));
                 foreach (var container in containers)
-                    container.Loaded += Container_Loaded;
+                    container.Loaded += Goods_Container_Loaded;
             }
         }
 
-        private void Container_Loaded(object sender, RoutedEventArgs e)
+        private void Goods_Container_Loaded(object sender, RoutedEventArgs e)
         {
             var element = (DataGridRow)sender;
-            element.Loaded -= Container_Loaded;
+            element.Loaded -= Goods_Container_Loaded;
 
             var contentPresenter = (ContentPresenter)goodsGrid.Columns[^1].
                 GetCellContent(element);
@@ -83,6 +112,52 @@ namespace Store
                 if (int.TryParse(__count.Text, out var i))
                     basket.GoodCount = i;
             }
+        }
+
+        private void GoodCount_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            using var connection = new SqlConnection(ConfigurationManager.
+                    ConnectionStrings["DefaultConnection"].ConnectionString);
+            try
+            {
+                connection.Open();
+                var contentPresenter = (ContentPresenter)VisualTreeHelper.GetParent(VisualTreeHelper.GetParent((TextBox)sender));
+                var template = contentPresenter?.ContentTemplate;
+                if (template != null)
+                {
+                    var __count = (TextBox)template.FindName("__count", contentPresenter);
+                    var __id = (TextBox)template.FindName("__id", contentPresenter);
+                    if (int.TryParse(__count.Text, out var count) 
+                        && int.TryParse(__id.Text, out var id)) 
+                    {
+                        new SqlCommand($"Update Basket Set GoodCount={count} " +
+                            $"where ID={id}", connection).ExecuteNonQuery();
+                    }
+                }
+                StoreModel.UpdateTotalValue();
+            }
+            catch
+            {
+                return;
+            }
+            finally
+            {
+                if (connection.State != ConnectionState.Closed)
+                    connection.Close();
+            }
+        }
+
+        private void BasketGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (placeOrder.CommandParameter is PlaceOrderParam param)
+            {
+                param.SelectedBasketItems = ((DataGrid)sender).SelectedItems;
+            }
+        }
+
+        private void DeliveryMethod_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            StoreModel.DeliveryMethod = (DataRowView)((ComboBox)sender).SelectedItem;
         }
     }
 }
