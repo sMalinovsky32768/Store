@@ -67,7 +67,7 @@ namespace Store
                     value * sourceValute.Value / sourceValute.Nominal :
                     value;
                 decimal destinationValue = destinationCurrency != "RUB" ?
-                    rubValue * destinationValute.Value / destinationValute.Nominal :
+                    rubValue * destinationValute.Nominal / destinationValute.Value :
                     rubValue;
                 return destinationValue;
             }
