@@ -24,7 +24,7 @@ namespace Store
 
         private static string URL { get; } =
             @"http://www.cbr.ru/scripts/XML_daily.asp";
-        private static List<Valute> Valutes { get; } = new List<Valute>();
+        private static List<Valute> Valutes { get; }
 
         static CBConverter()
         {
@@ -64,10 +64,10 @@ namespace Store
                 var sourceValute = GetValute(sourceCurrency) ?? DefaultValute;
                 var destinationValute = GetValute(destinationCurrency) ?? DefaultValute;
                 decimal rubValue = sourceCurrency != "RUB" ?
-                    value * sourceValute.Nominal * sourceValute.Value :
+                    value * sourceValute.Value / sourceValute.Nominal :
                     value;
                 decimal destinationValue = destinationCurrency != "RUB" ?
-                    rubValue * destinationValute.Nominal * destinationValute.Value :
+                    rubValue * destinationValute.Value / destinationValute.Nominal :
                     rubValue;
                 return destinationValue;
             }
